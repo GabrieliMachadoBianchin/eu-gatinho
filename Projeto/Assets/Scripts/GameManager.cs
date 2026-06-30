@@ -7,7 +7,7 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("Play clicado");
 
-        SceneManager.LoadScene("Jogo");
+        SceneManager.LoadScene("DemoScene");
     }
 
     public void ExitGame()
