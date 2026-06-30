@@ -4,15 +4,18 @@ public class DamageObstacle : MonoBehaviour
 {
     public int damage = 1;
 
-    private void OnCollisionEnter(Collision collision)
+    private void OnTriggerEnter(Collider other)
     {
-        if (!collision.gameObject.CompareTag("Player"))
+        if (!other.CompareTag("Player"))
             return;
 
-        PlayerHealth health =
-            collision.gameObject.GetComponent<PlayerHealth>();
+        PlayerHealth health = other.GetComponent<PlayerHealth>();
 
         if (health != null)
+        {
+            Debug.Log("Tomou dano!");
+
             health.TakeDamage(damage);
+        }
     }
 }

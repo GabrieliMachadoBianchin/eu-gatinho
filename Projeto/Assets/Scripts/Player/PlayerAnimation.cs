@@ -5,41 +5,55 @@ public class PlayerAnimation : MonoBehaviour
 {
     private Animator animator;
 
-    private readonly int SpeedHash = Animator.StringToHash("Speed");
-    private readonly int GroundedHash = Animator.StringToHash("Grounded");
-    private readonly int JumpHash = Animator.StringToHash("Jump");
-    private readonly int HitHash = Animator.StringToHash("Hit");
-    private readonly int DeadHash = Animator.StringToHash("Dead");
-    private readonly int WinHash = Animator.StringToHash("Win");
+    private string currentAnimation;
 
     private void Awake()
     {
         animator = GetComponent<Animator>();
     }
 
-    public void UpdateAnimation(float speed, bool grounded)
+    void Play(string animationName)
     {
-        animator.SetFloat(SpeedHash, speed, 0.1f, Time.deltaTime);
-        animator.SetBool(GroundedHash, grounded);
+        if (currentAnimation == animationName)
+            return;
+
+        currentAnimation = animationName;
+
+        animator.CrossFade(animationName, 0.15f);
+    }
+
+    public void UpdateMovement(float speed, bool grounded)
+    {
+        if (!grounded)
+        {
+            Play("fly");
+            return;
+        }
+
+        if (speed < 0.1f)
+        {
+            Play("idle");
+            return;
+        }
+
+        if (Input.GetKey(KeyCode.LeftShift))
+            Play("run");
+        else
+            Play("walk");
     }
 
     public void Jump()
     {
-        animator.SetTrigger(JumpHash);
+        Play("jump");
     }
 
     public void Hit()
     {
-        animator.SetTrigger(HitHash);
+        Play("hit");
     }
 
     public void Die()
     {
-        animator.SetBool(DeadHash, true);
-    }
-
-    public void Win()
-    {
-        animator.SetTrigger(WinHash);
+        Play("die");
     }
 }

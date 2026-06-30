@@ -1,6 +1,7 @@
 using UnityEngine;
 
-[RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(CapsuleCollider))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
@@ -9,16 +10,16 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed = 10f;
 
     [Header("Jump")]
-    public float jumpHeight = 1.5f;
-    public float gravity = -20f;
+    public float jumpForce = 7f;
 
     [Header("References")]
     public Transform cameraTransform;
 
-    private CharacterController controller;
+    private Rigidbody rb;
     private PlayerAnimation playerAnimation;
 
-    private Vector3 velocity;
+    private Vector3 movement;
+
     private bool isGrounded;
 
     public bool IsGrounded => isGrounded;
@@ -26,42 +27,33 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
-        controller = GetComponent<CharacterController>();
+        rb = GetComponent<Rigidbody>();
         playerAnimation = GetComponent<PlayerAnimation>();
+
+        rb.freezeRotation = true;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
     }
 
     private void Update()
     {
-        GroundCheck();
+        ReadInput();
 
-        Move();
+        HandleJump();
 
-        ApplyGravity();
-
-        Jump();
-
-        playerAnimation.UpdateAnimation(SpeedPercent, isGrounded);
+        playerAnimation.UpdateMovement(
+            SpeedPercent,
+            isGrounded);
     }
 
-    private void GroundCheck()
+    private void FixedUpdate()
     {
-        isGrounded = controller.isGrounded;
-
-        if (isGrounded && velocity.y < 0)
-            velocity.y = -2f;
+        MovePlayer();
     }
 
-    private void Move()
+    void ReadInput()
     {
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
-
-        Vector3 input = new Vector3(horizontal, 0, vertical);
-
-        SpeedPercent = Mathf.Clamp01(input.magnitude);
-
-        if (input.magnitude < 0.1f)
-            return;
+        float h = Input.GetAxisRaw("Horizontal");
+        float v = Input.GetAxisRaw("Vertical");
 
         Vector3 forward = cameraTransform.forward;
         Vector3 right = cameraTransform.right;
@@ -72,35 +64,66 @@ public class PlayerController : MonoBehaviour
         forward.Normalize();
         right.Normalize();
 
-        Vector3 moveDirection = forward * vertical + right * horizontal;
+        movement = (forward * v + right * h).normalized;
 
-        float speed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
-
-        controller.Move(moveDirection.normalized * speed * Time.deltaTime);
-
-        Quaternion targetRotation =
-            Quaternion.LookRotation(moveDirection);
-
-        transform.rotation = Quaternion.Slerp(
-            transform.rotation,
-            targetRotation,
-            rotationSpeed * Time.deltaTime);
+        SpeedPercent = movement.magnitude;
     }
 
-    private void Jump()
+    void MovePlayer()
     {
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        if (movement.magnitude < 0.1f)
+            return;
+
+        float speed = Input.GetKey(KeyCode.LeftShift)
+            ? runSpeed
+            : walkSpeed;
+
+        Vector3 targetPosition =
+            rb.position + movement * speed * Time.fixedDeltaTime;
+
+        rb.MovePosition(targetPosition);
+
+        Quaternion targetRotation =
+            Quaternion.LookRotation(movement);
+
+        rb.MoveRotation(
+            Quaternion.Slerp(
+                rb.rotation,
+                targetRotation,
+                rotationSpeed * Time.fixedDeltaTime));
+    }
+
+    void HandleJump()
+    {
+        if (!isGrounded)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.Space))
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            rb.AddForce(
+                Vector3.up * jumpForce,
+                ForceMode.Impulse);
+
+            isGrounded = false;
 
             playerAnimation.Jump();
         }
     }
 
-    private void ApplyGravity()
+    private void OnCollisionStay(Collision collision)
     {
-        velocity.y += gravity * Time.deltaTime;
+        foreach (ContactPoint contact in collision.contacts)
+        {
+            if (contact.normal.y > 0.5f)
+            {
+                isGrounded = true;
+                return;
+            }
+        }
+    }
 
-        controller.Move(velocity * Time.deltaTime);
+    private void OnCollisionExit(Collision collision)
+    {
+        isGrounded = false;
     }
 }
