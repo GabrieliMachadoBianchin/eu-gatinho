@@ -17,14 +17,4 @@ public class GameManager : MonoBehaviour
         Application.Quit();
     }
 
-    // pausa
-
-
-    // game over
-
-
-    // Tela vitória
-
-
-    // reiniciar?
 }
